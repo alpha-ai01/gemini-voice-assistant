@@ -1,5 +1,2 @@
 google-genai
-SpeechRecognition
-PyAudio
-edge-tts
-pygame
+pyTelegramBotAPI
