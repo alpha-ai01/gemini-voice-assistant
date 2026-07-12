@@ -1,3 +1,3 @@
-git add main.py
-git commit -m "Fix: Complete reinstall with stable gemini-1.5-flash"
-git push origin main
+pyTelegramBotAPI
+google-genai
+python-dotenv
