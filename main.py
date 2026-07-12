@@ -18,8 +18,8 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# กำหนดชื่อโมเดลหลัก (Gemini 2.5 Flash)
-MODEL_NAME = 'gemini-2.5-flash'
+# เปลี่ยนเป็นโมเดลมาตรฐาน 1.5 Flash เพื่อให้รองรับบัญชีทั่วไปได้ 100%
+MODEL_NAME = 'gemini-1.5-flash'
 
 # ตรวจสอบ Environment Variables ก่อนเริ่มทำงาน
 if not TELEGRAM_BOT_TOKEN or not GEMINI_API_KEY:
@@ -51,7 +51,7 @@ def send_welcome(message):
     user_chats[user_id] = gemini_client.chats.create(model=MODEL_NAME)
     
     welcome_text = (
-        "🤖 **ยินดีต้อนรับสู่บอท Gemini 2.5 Flash!**\n\n"
+        "🤖 **ยินดีต้อนรับสู่บอท Gemini 1.5 Flash!**\n\n"
         "คุณสามารถพิมพ์คุยโต้ตอบข้อความกับบอทได้ทันที ระบบจะจำบริบทการคุยก่อนหน้าไว้\n"
         "🔄 พิมพ์คำสั่ง /reset เพื่อล้างความจำและเริ่มคุยหัวข้อใหม่ครับ"
     )
@@ -87,7 +87,7 @@ def handle_text_message(message):
             bot.reply_to(message, "🤖 Gemini ไม่ได้ส่งข้อความตอบกลับมา (คำถามอาจขัดต่อเงื่อนไข Safety Settings ของระบบ)")
             
     except errors.APIError as api_err:
-        # ดักจับกรณีเกิดความผิดพลาดที่ตัว API ของ Google โดยตรง (เช่น Key ผิด, โดนจำกัดโควตา)
+        # ดักจับกรณีเกิดความผิดพลาดที่ตัว API ของ Google โดยตรง
         logging.error(f"Gemini API Error (User {user_id}): {api_err}")
         error_msg = f"❌ **เกิดข้อผิดพลาดจาก Gemini API:**\n`{api_err.message}`\n\n💡 *คำแนะนำ: โปรดตรวจสอบความถูกต้องของ GEMINI_API_KEY หรือเครดิตใช้งาน*"
         bot.reply_to(message, error_msg, parse_mode='Markdown')
@@ -99,5 +99,4 @@ def handle_text_message(message):
 
 if __name__ == '__main__':
     logging.info("กำลังเปิดโหมด Long Polling...")
-    # ตั้งค่ารัดกุมเพื่อลดการหลุดจากการเชื่อมต่อเครือข่ายที่ไม่เสถียรบน Cloud
     bot.infinity_polling(timeout=20, long_polling_timeout=10)
