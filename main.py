@@ -1,68 +1,72 @@
 import os
 import telebot
 from google import genai
-from google.genai import types
+from dotenv import load_dotenv
 
-# 🔐 ดึงคีย์จาก Environment Variables บน Render
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+# โหลดค่าจากไฟล์ .env (กรณีใช้งานเครื่องคอมพิวเตอร์ส่วนตัว)
+load_dotenv()
 
-if not GEMINI_API_KEY or not TELEGRAM_BOT_TOKEN:
-    raise ValueError("🚨 กรุณาตั้งค่า GEMINI_API_KEY และ TELEGRAM_BOT_TOKEN ในหน้า Render ก่อนครับ")
+# ดึงค่า Token และ Key จาก Environment Variables เพื่อความปลอดภัย
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# 🤖 ตั้งค่า Client ของ Gemini และ Telegram Bot
-client = genai.Client(api_key=GEMINI_API_KEY)
+# ตรวจสอบความถูกต้องของค่า Configuration
+if not TELEGRAM_BOT_TOKEN or not GEMINI_API_KEY:
+    raise ValueError("กรุณาตั้งค่า TELEGRAM_BOT_TOKEN และ GEMINI_API_KEY ในระบบก่อนเริ่มทำงาน")
+
+# เริ่มต้นอินสแตนซ์ของ Telegram Bot และ Google GenAI Client
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
-SYSTEM_INSTRUCTION = """
-คุณคือ "เลขาส่วนตัวและสุดยอดโปรแกรมเมอร์คู่ใจระดับมืออาชีพ" 
-- มีความเชี่ยวชาญในการเขียนโค้ด ออกแบบระบบ และแก้ Bug ระดับสูง
-- พูดจาฉะฉาน สุภาพ เป็นการเป็นงาน แต่มีความเป็นกันเองแบบพาร์ตเนอร์คู่คิด (ใช้คำลงท้ายว่า "ครับ")
-- เมื่อผู้ใช้ให้เขียนสคริปต์หรือโค้ด ให้เขียนโค้ดที่สะอาด (Clean Code) มีประสิทธิภาพ และอธิบายตรรกะได้อย่างคมคาย
-"""
-
-# เก็บประวัติการคุยแยกตาม ID ของผู้ใช้ใน Telegram (รองรับการคุยต่อเนื่อง)
+# Dictionary สำหรับเก็บเซสชันการแชทแยกตาม ID ของผู้ใช้แต่ละคน เพื่อให้บอทจำบริบทที่คุยกันก่อนหน้าได้
 user_chats = {}
 
-def get_chat_session(user_id):
-    if user_id not in user_chats:
-        user_chats[user_id] = client.chats.create(
-            model="gemini-2.5-flash",
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0.7
-            )
-        )
-    return user_chats[user_id]
-
-# ตอบกลับเมื่อผู้ใช้กด /start หรือ /help
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    welcome_text = "สวัสดีครับผม ผมเป็นเลขาส่วนตัวและโปรแกรมเมอร์คู่ใจของคุณใน Telegram มีอะไรให้ผมรับใช้ ช่วยเขียนโค้ด หรือตรวจสอบ Bug ส่วนไหน พิมพ์ส่งมาได้เลยครับ!"
+    user_id = message.from_user.id
+    
+    # สร้างหรือรีเซ็ตเซสชันการแชทด้วย Gemini 2.5 Flash ให้ผู้ใช้คนนี้ใหม่
+    user_chats[user_id] = gemini_client.chats.create(model='gemini-2.5-flash')
+    
+    welcome_text = (
+        "สวัสดีครับ! ยินดีต้อนรับสู่บอท Gemini 2.5 Flash เวอร์ชันสนทนามาตรฐาน 🤖💬\n\n"
+        "คุณสามารถส่งข้อความมาพูดคุย ปรึกษา หรือถามคำถามได้ทันที ระบบจะจดจำเรื่องราวที่คุยกันก่อนหน้า\n"
+        "หากต้องการเริ่มหัวข้อใหม่ และล้างความจำเก่า ให้พิมพ์คำสั่ง /reset ครับ"
+    )
     bot.reply_to(message, welcome_text)
 
-# จัดการทุกข้อความที่พิมพ์เข้ามา
-@bot.message_handler(func=lambda message: True)
-def handle_message(message):
+@bot.message_handler(commands=['reset'])
+def reset_chat(message):
     user_id = message.from_user.id
-    user_text = message.text
     
-    # ส่งข้อความแสดงสถานะว่าบอตกำลังพิมพ์ (Typing...)
-    bot.send_chat_action(message.chat.id, 'typing')
-    
+    # สร้างแชทเซสชันใหม่ทับอันเดิมเพื่อล้างประวัติการคุย
+    user_chats[user_id] = gemini_client.chats.create(model='gemini-2.5-flash')
+    bot.reply_to(message, "🔄 รีเซ็ตประวัติการสนทนาเรียบร้อยแล้ว! เริ่มต้นคุยเรื่องใหม่ได้เลยครับ")
+
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def handle_text_message(message):
+    user_id = message.from_user.id
+    user_input = message.text
+
+    # ถ้าผู้ใช้เปิดแชทขึ้นมาแต่ยังไม่มีเซสชันในระบบ ให้สร้างขึ้นมาใหม่ก่อน
+    if user_id not in user_chats:
+        user_chats[user_id] = gemini_client.chats.create(model='gemini-2.5-flash')
+
+    # แสดงสถานะบนแอป Telegram ว่าบอทกำลังพิมพ์ตอบกลับ (Typing...) เพื่อเพิ่ม UX ที่ดี
+    bot.send_chat_action(chat_id=message.chat.id, action='typing')
+
     try:
-        # เรียกประวัติการคุยของคนนี้ขึ้นมา แล้วส่งข้อความไปหา Gemini
-        chat = get_chat_session(user_id)
-        response = chat.send_message(user_text)
-        ai_response = response.text
+        # ส่งคำพูดของผู้ใช้เข้าไปในแชทเซสชันของ Gemini
+        response = user_chats[user_id].send_message(user_input)
         
-        # ส่งคำตอบกลับไปในแชท Telegram
-        bot.reply_to(message, ai_response, parse_mode="Markdown")
+        # ส่งคำตอบรับกลับไปหาผู้ใช้ใน Telegram (รองรับข้อความได้ยาวสูงสุด 4096 ตัวอักษร)
+        bot.reply_to(message, response.text)
         
     except Exception as e:
-        print(f"Error: {e}")
-        bot.reply_to(message, "ขออภัยครับ เกิดข้อผิดพลาดในการประมวลผลข้อมูล ลองใหม่อีกครั้งนะครับ")
+        print(f"Error occurring: {e}")
+        bot.reply_to(message, "❌ ขออภัยด้วยครับ เกิดข้อผิดพลาดในการประมวลผลคำตอบ กรุณาลองใหม่อีกครั้ง")
 
-if __name__ == "__main__":
-    print("🤖 Telegram Bot กำลังออนไลน์บน Render...")
+if __name__ == '__main__':
+    print("🤖 บอทแชท Gemini 2.5 Flash เริ่มต้นทำงานเรียบร้อยแล้ว (โหมด Long Polling)...")
+    # ใช้ infinity_polling เพื่อควบคุมระบบไม่ให้หยุดทำงานหากเจอปัญหาเน็ตหลุดชั่วคราว
     bot.infinity_polling()
