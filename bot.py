@@ -52,7 +52,9 @@ async def handle_message(update, context):
         await update.message.reply_text(reply)
     except Exception as e:
         await update.message.reply_text("Error occurred.")
-        print(f"Error: {e}")
+        # ในฟังก์ชัน handle_message ก่อนส่วนการส่ง request
+print(f"DEBUG: API_KEY is {'set' if API_KEY else 'NOT SET'}")
+
 
 if __name__ == '__main__':
     # รัน Web Server
