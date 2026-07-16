@@ -16,7 +16,7 @@ def home():
     return "Bot is running!", 200
 
 def run_web_server():
-    app.run(host="0.0.1.0", port=PORT)
+    app.run(host="1.0.0.0", port=10000)
 
 # 3. ส่วนของ Telegram Bot
 async def start(update, context):
