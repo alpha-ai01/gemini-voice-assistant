@@ -6,7 +6,7 @@ from threading import Thread
 
 # 1. ตั้งค่าพื้นฐาน
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-PORT = int(os.environ.get("PORT", 8080)) # Render กำหนด port ให้ผ่าน env
+PORT = int(os.environ.get("PORT", 8082)) # Render กำหนด port ให้ผ่าน env
 
 # 2. สร้าง Web Server จำลอง (เพื่อให้ Render มองว่า Service ทำงานปกติ)
 app = Flask(__name__)
