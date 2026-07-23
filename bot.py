@@ -25,7 +25,7 @@ def home():
     return "Bot is running!", 200
 
 def run_web_server():
-    app.run(host="0.0.0.0", port=PORT)
+    app.run(host="0.0.0.0", port=10001)
 
 # ฟังก์ชันจัดการข้อความ
 async def start(update, context):
